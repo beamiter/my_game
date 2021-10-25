@@ -28,7 +28,7 @@
     "_lpos": {
       "__type__": "cc.Vec3",
       "x": 0,
-      "y": -1.5,
+      "y": 0.25,
       "z": 0
     },
     "_lrot": {
@@ -41,7 +41,7 @@
     "_lscale": {
       "__type__": "cc.Vec3",
       "x": 1,
-      "y": 1,
+      "y": 0.5,
       "z": 1
     },
     "_layer": 1073741824,
@@ -85,7 +85,7 @@
   },
   {
     "__type__": "cc.CompPrefabInfo",
-    "fileId": "f797bEYc9Nj42DFR58F2X3"
+    "fileId": "bd+ETQdOVG9rqiYFhqdpK8"
   },
   {
     "__type__": "cc.ModelLightmapSettings",
@@ -111,6 +111,6 @@
     "asset": {
       "__id__": 0
     },
-    "fileId": "96Ggpy3QpCMITHegxCnVNg"
+    "fileId": "2eYZBz9bdGJ63yuKDn0AM4"
   }
 ]

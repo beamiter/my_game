@@ -1,5 +1,5 @@
 
-import { _decorator, Component, Node, Vec3, systemEvent, SystemEvent, EventMouse, Animation } from 'cc';
+import { _decorator, Component, Node, Vec3, systemEvent, SystemEvent, EventMouse, Animation, NodePool } from 'cc';
 const { ccclass, property } = _decorator;
 
 /**
