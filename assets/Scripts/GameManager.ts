@@ -1,7 +1,8 @@
 
 import {
     _decorator, Component, Node, Prefab, instantiate, CCInteger, Vec3,
-    Label
+    Label,
+    NodePool
 } from 'cc';
 import { PlayerController } from './PlayerController';
 const { ccclass, property } = _decorator;
@@ -40,6 +41,8 @@ export class GameManager extends Component {
 
     @property({ type: Prefab })
     public cubePrfb: Prefab | null = null;
+    @property({ type: Prefab })
+    public cylinderPrfb: Prefab | null = null;
     @property({ type: CCInteger })
     public roadLength: Number = 50;
     @property({ type: PlayerController })
@@ -51,6 +54,8 @@ export class GameManager extends Component {
 
     private _road: number[] = [];
     private _curState: GameState = GameState.GS_INIT;
+    private _cubePool: NodePool = new NodePool();
+    private _cylinderPool: NodePool = new NodePool();
 
     checkResult(moveIndex: number) {
         if (moveIndex <= this.roadLength) {
@@ -71,6 +76,9 @@ export class GameManager extends Component {
 
     onPlayerJumpEnd(moveIndex: number) {
         this.stepsLabel.string = '' + moveIndex;
+        if (this.playerCtrl.node.children.length > 5) {
+
+        }
         this.checkResult(moveIndex);
     }
 
@@ -116,6 +124,40 @@ export class GameManager extends Component {
 
     generateRoad() {
         this.node.removeAllChildren();
+
+        const initCount: number = 5;
+        let cube: Node | null = null;
+        let cylinder: Node | null = null;
+        for (let i = 0; i < initCount; ++i) {
+            cube = instantiate(this.cubePrfb);
+            this._cubePool.put(cube);
+            cylinder = instantiate(this.cylinderPrfb);
+            this._cylinderPool.put(cylinder);
+        }
+        let block: Node | null = null;
+        let pos: Vec3 = new Vec3(0, 0.25, 0);
+        for (let j = 0; j < 2; ++j) {
+            let n: Number = Math.floor(Math.random() * 2);
+            if (n === 0) {
+                block = this._cubePool.get();
+            } else if (n === 1) {
+                block = this._cylinderPool.get();
+            } else {
+                continue;
+            }
+            this.node.addChild(block);
+            block.setPosition(pos);
+            console.log(block.name);
+            let changeX: number = Math.floor(Math.random() * 2);
+            let delta: number = Math.floor(Math.random() * 3) + 2;
+            if (changeX) {
+                pos.x += delta;
+            } else {
+                pos.z -= delta;
+            }
+        }
+        return;
+
         this._road = [];
         this._road.push(BlockType.BT_STONE);
 
