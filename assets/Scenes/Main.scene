@@ -229,7 +229,7 @@
       "__uuid__": "1263d74c-8167-4928-91a6-4e2672411f47@801ec",
       "__expectedType__": "cc.Mesh"
     },
-    "_shadowCastingMode": 1,
+    "_shadowCastingMode": 0,
     "_shadowReceivingMode": 1,
     "_enableMorph": true,
     "_id": "848ZatNl1IALf0MwCFhzNc"
@@ -631,7 +631,7 @@
     "_priority": 1073741824,
     "_fov": 45,
     "_fovAxis": 0,
-    "_orthoHeight": 596.9849246231155,
+    "_orthoHeight": 384.4698205546493,
     "_near": 1,
     "_far": 2000,
     "_color": {

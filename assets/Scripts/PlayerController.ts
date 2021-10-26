@@ -27,7 +27,7 @@ export class PlayerController extends Component {
 
     private _startJump: boolean = false;
     private _curJumpTime: number = 0;
-    private _jumpTime: number = 0.1;
+    private _jumpTime: number = 0.5;
     private _curJumpSpeedX: number = 0;
     private _curJumpSpeedZ: number = 0;
     private _curPos: Vec3 = new Vec3();
@@ -35,6 +35,10 @@ export class PlayerController extends Component {
     private _targetPos: Vec3 = new Vec3();
     private _isMoving = false;
     private _curMoveIndex = 0;
+
+    setTargetPose(pos: Vec3) {
+        this._targetPos = pos;
+    }
 
     start() {
         // [3]
@@ -59,8 +63,11 @@ export class PlayerController extends Component {
             return;
         }
         this._startJump = true;
-        this.node.children[this.node.children.length - 1].getPosition(this._targetPos);
+        //this.node.getChildByName('Body').getPosition(this._curPos);
         this.node.getPosition(this._curPos);
+        // Always keep the y axis pos as the same.
+        this._targetPos.y = this._curPos.y;
+        console.log(this._curPos, this._targetPos);
         this._curJumpTime = 0;
         this._curJumpSpeedX = (this._targetPos.x - this._curPos.x) / this._jumpTime;
         this._curJumpSpeedZ = (this._targetPos.z - this._curPos.z) / this._jumpTime;

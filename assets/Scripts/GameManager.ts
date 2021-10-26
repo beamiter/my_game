@@ -56,6 +56,12 @@ export class GameManager extends Component {
     private _curState: GameState = GameState.GS_INIT;
     private _cubePool: NodePool = new NodePool();
     private _cylinderPool: NodePool = new NodePool();
+    private _blockHistory: [number, Node][] = [];
+
+    clearObjectPooling() {
+        this._cubePool.clear();
+        this._cylinderPool.clear();
+    }
 
     checkResult(moveIndex: number) {
         if (moveIndex <= this.roadLength) {
@@ -64,6 +70,9 @@ export class GameManager extends Component {
             }
         } else {
             this.curState = GameState.GS_INIT;
+        }
+        if (this.curState === GameState.GS_INIT) {
+            this.node.removeAllChildren();
         }
     }
 
@@ -76,10 +85,16 @@ export class GameManager extends Component {
 
     onPlayerJumpEnd(moveIndex: number) {
         this.stepsLabel.string = '' + moveIndex;
-        if (this.playerCtrl.node.children.length > 5) {
-
-        }
         this.checkResult(moveIndex);
+        this.addNewPile(this.playerCtrl.node.getPosition(), true);
+        if (this._blockHistory.length > 5) {
+            let blockPair = this._blockHistory.shift();
+            if (blockPair[0] === 0) {
+                this._cubePool.put(blockPair[1]);
+            } else if (blockPair[0] === 1) {
+                this._cylinderPool.put(blockPair[1]);
+            }
+        }
     }
 
     init() {
@@ -122,10 +137,52 @@ export class GameManager extends Component {
         this.curState = GameState.GS_PLAYING;
     }
 
+    getRandomNextPos(pos: Vec3): Vec3 {
+        let changeX: number = Math.floor(Math.random() * 2);
+        let delta: number = Math.floor(Math.random() * 3) + 2;
+        pos.y = 0.25;
+        if (changeX) {
+            pos.x += delta;
+        } else {
+            pos.z -= delta;
+        }
+        return pos;
+    }
+
+    getRandomNextNode(block: Node): Node {
+        let n: number = Math.floor(Math.random() * 2);
+        if (n === 0) {
+            // 0 for cube pool.
+            block = this._cubePool.get();
+        } else if (n === 1) {
+            // 1 for cylinder pool.
+            block = this._cylinderPool.get();
+        }
+        this._blockHistory.push([n, block]);
+        return block;
+    }
+
+    addNewPile(pos: Vec3, updatePos: boolean) {
+        let block: Node | null = null;
+        block = this.getRandomNextNode(block);
+        if (!block) {
+            return;
+        }
+        if (updatePos) {
+            pos = this.getRandomNextPos(pos);
+            block.setPosition(pos);
+            // Set as target pos.
+            this.playerCtrl.setTargetPose(pos);
+        }
+        this.node.addChild(block);
+        console.log(block.name, block.getSiblingIndex(), pos);
+    }
+
     generateRoad() {
         this.node.removeAllChildren();
 
-        const initCount: number = 5;
+        // Initialize prefab.
+        const initCount: number = 6;
         let cube: Node | null = null;
         let cylinder: Node | null = null;
         for (let i = 0; i < initCount; ++i) {
@@ -134,48 +191,11 @@ export class GameManager extends Component {
             cylinder = instantiate(this.cylinderPrfb);
             this._cylinderPool.put(cylinder);
         }
-        let block: Node | null = null;
+        // Initialize with two tiles.
         let pos: Vec3 = new Vec3(0, 0.25, 0);
-        for (let j = 0; j < 2; ++j) {
-            let n: Number = Math.floor(Math.random() * 2);
-            if (n === 0) {
-                block = this._cubePool.get();
-            } else if (n === 1) {
-                block = this._cylinderPool.get();
-            } else {
-                continue;
-            }
-            this.node.addChild(block);
-            block.setPosition(pos);
-            console.log(block.name);
-            let changeX: number = Math.floor(Math.random() * 2);
-            let delta: number = Math.floor(Math.random() * 3) + 2;
-            if (changeX) {
-                pos.x += delta;
-            } else {
-                pos.z -= delta;
-            }
-        }
+        this.addNewPile(pos, false);
+        this.addNewPile(pos, true);
         return;
-
-        this._road = [];
-        this._road.push(BlockType.BT_STONE);
-
-        for (let i = 1; i < this.roadLength; ++i) {
-            if (this._road[i - 1] === BlockType.BT_NONE) {
-                this._road.push(BlockType.BT_STONE);
-            } else {
-                this._road.push(Math.floor(Math.random() * 2));
-            }
-        }
-
-        for (let j = 0; j < this._road.length; ++j) {
-            let block: Node = this.spawnBlockByType(this._road[j]);
-            if (block) {
-                this.node.addChild(block);
-                block.setPosition(j, 0.25, 0);
-            }
-        }
     }
 
     spawnBlockByType(type: BlockType) {
