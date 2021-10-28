@@ -58,57 +58,46 @@ export class GameManager extends Component {
     private _cylinderPool: NodePool = new NodePool();
     private _blockHistory: [number, Node][] = [];
 
+    start() {
+        this.clearObjectPooling();
+        this.curState = GameState.GS_INIT;
+        this.playerCtrl?.node.on('JumpEnd', this.onPlayerJumpEnd, this);
+    }
+
+    // update (deltaTime: number) {
+    //     // [4]
+    // }
+
     clearObjectPooling() {
         this._cubePool.clear();
         this._cylinderPool.clear();
     }
 
-    checkResult(moveIndex: number) {
-        if (moveIndex <= this.roadLength) {
-            if (this._road[moveIndex] == BlockType.BT_NONE) {
-                this.curState = GameState.GS_INIT;
-            }
-        } else {
-            this.curState = GameState.GS_INIT;
-        }
-        if (this.curState === GameState.GS_INIT) {
-            this.node.removeAllChildren();
-        }
-    }
-
-    start() {
-        // [3]
-        // this.generateRoad();
-        this.curState = GameState.GS_INIT;
-        this.playerCtrl?.node.on('JumpEnd', this.onPlayerJumpEnd, this);
-    }
-
-    onPlayerJumpEnd(moveIndex: number) {
-        this.stepsLabel.string = '' + moveIndex;
-        this.checkResult(moveIndex);
-        this.addNewPile(this.playerCtrl.node.getPosition(), true);
-        if (this._blockHistory.length > 5) {
-            let blockPair = this._blockHistory.shift();
-            if (blockPair[0] === 0) {
-                this._cubePool.put(blockPair[1]);
-            } else if (blockPair[0] === 1) {
-                this._cylinderPool.put(blockPair[1]);
-            }
-        }
-    }
-
-    init() {
-        if (this.startMenu) {
-            this.startMenu.active = true;
-        }
+    // Assotiated with button event.
+    onStartButtonClicked() {
+        this.curState = GameState.GS_PLAYING;
         this.generateRoad();
-        if (this.playerCtrl) {
-            this.playerCtrl.setInputActive(false);
-            this.playerCtrl.node.setPosition(Vec3.ZERO);
-            this.playerCtrl.reset();
-        }
     }
 
+    generateRoad() {
+        // Initialize prefab.
+        const initCount: number = 6;
+        let cube: Node | null = null;
+        let cylinder: Node | null = null;
+        for (let i = 0; i < initCount; ++i) {
+            cube = instantiate(this.cubePrfb);
+            this._cubePool.put(cube);
+            cylinder = instantiate(this.cylinderPrfb);
+            this._cylinderPool.put(cylinder);
+        }
+        // Initialize with two tiles.
+        let pos: Vec3 = new Vec3(0, 0.25, 0);
+        this.addNewPile(pos, false);
+        this.addNewPile(pos, true);
+        return;
+    }
+
+    // curState setter.
     set curState(value: GameState) {
         switch (value) {
             case GameState.GS_INIT:
@@ -133,13 +122,89 @@ export class GameManager extends Component {
         this._curState = value;
     }
 
-    onStartButtonClicked() {
-        this.curState = GameState.GS_PLAYING;
+    init() {
+        if (this.startMenu) {
+            this.startMenu.active = true;
+        }
+        if (this.playerCtrl) {
+            this.playerCtrl.setInputActive(false);
+            this.playerCtrl.reset();
+        }
+        this.clearObjectPooling();
+        this.node.removeAllChildren();
+    }
+
+    onPlayerJumpEnd(moveIndex: number) {
+        this.checkResult(moveIndex);
+        if (this._curState === GameState.GS_INIT) {
+            return;
+        }
+        this.stepsLabel.string = '' + moveIndex;
+        // Node pool collection.
+        if (this._blockHistory.length >= 5) {
+            let blockPair = this._blockHistory.shift();
+            if (blockPair[0] === 0) {
+                this._cubePool.put(blockPair[1]);
+            } else if (blockPair[0] === 1) {
+                this._cylinderPool.put(blockPair[1]);
+            }
+        }
+        // Add new node.
+        this.addNewPile(this.playerCtrl.node.getPosition(), true);
+    }
+
+    checkResult(moveIndex: number) {
+        if (moveIndex <= this.roadLength) {
+            if (this._road[moveIndex] == BlockType.BT_NONE) {
+                this.curState = GameState.GS_INIT;
+            }
+        } else {
+            this.curState = GameState.GS_INIT;
+        }
+    }
+
+    addNewPile(pos: Vec3, updatePos: boolean) {
+        let block: Node | null = null;
+        let n: number = Math.floor(Math.random() * 2);
+        block = this.getRandomNextNode(block, n);
+        if (block === null) {
+            return;
+        }
+        if (updatePos) {
+            pos = this.getRandomNextPos(pos);
+            // Set as target pos.
+            this.playerCtrl.setTargetPose(pos);
+        }
+        // Always need to set position.
+        block.setPosition(pos);
+        this.node.addChild(block);
+        this._blockHistory.push([n, block]);
+        console.log('****** ', block.name, block.getSiblingIndex(), pos);
+    }
+
+    // Get random next node by type, currently cube/cylinder.
+    getRandomNextNode(block: Node, n: number): Node {
+        if (n === 0) {
+            // 0 for cube pool.
+            block = this._cubePool.get();
+            if (block === null) {
+               block = instantiate(this.cubePrfb); 
+            }
+        } else if (n === 1) {
+            // 1 for cylinder pool.
+            block = this._cylinderPool.get();
+            if (block === null) {
+                block = instantiate(this.cylinderPrfb);
+            }
+        } else {
+            return null;
+        }
+        return block;
     }
 
     getRandomNextPos(pos: Vec3): Vec3 {
         let changeX: number = Math.floor(Math.random() * 2);
-        let delta: number = Math.floor(Math.random() * 3) + 2;
+        let delta: number = Math.floor(Math.random() * 4) * 0.5 + 1.5;
         pos.y = 0.25;
         if (changeX) {
             pos.x += delta;
@@ -148,74 +213,6 @@ export class GameManager extends Component {
         }
         return pos;
     }
-
-    getRandomNextNode(block: Node): Node {
-        let n: number = Math.floor(Math.random() * 2);
-        if (n === 0) {
-            // 0 for cube pool.
-            block = this._cubePool.get();
-        } else if (n === 1) {
-            // 1 for cylinder pool.
-            block = this._cylinderPool.get();
-        }
-        this._blockHistory.push([n, block]);
-        return block;
-    }
-
-    addNewPile(pos: Vec3, updatePos: boolean) {
-        let block: Node | null = null;
-        block = this.getRandomNextNode(block);
-        if (!block) {
-            return;
-        }
-        if (updatePos) {
-            pos = this.getRandomNextPos(pos);
-            block.setPosition(pos);
-            // Set as target pos.
-            this.playerCtrl.setTargetPose(pos);
-        }
-        this.node.addChild(block);
-        console.log(block.name, block.getSiblingIndex(), pos);
-    }
-
-    generateRoad() {
-        this.node.removeAllChildren();
-
-        // Initialize prefab.
-        const initCount: number = 6;
-        let cube: Node | null = null;
-        let cylinder: Node | null = null;
-        for (let i = 0; i < initCount; ++i) {
-            cube = instantiate(this.cubePrfb);
-            this._cubePool.put(cube);
-            cylinder = instantiate(this.cylinderPrfb);
-            this._cylinderPool.put(cylinder);
-        }
-        // Initialize with two tiles.
-        let pos: Vec3 = new Vec3(0, 0.25, 0);
-        this.addNewPile(pos, false);
-        this.addNewPile(pos, true);
-        return;
-    }
-
-    spawnBlockByType(type: BlockType) {
-        if (!this.cubePrfb) {
-            return null;
-        }
-
-        let block: Node | null = null;
-        switch (type) {
-            case BlockType.BT_STONE:
-                block = instantiate(this.cubePrfb);
-                break;
-        }
-
-        return block;
-    }
-
-    // update (deltaTime: number) {
-    //     // [4]
-    // }
 }
 
 /**

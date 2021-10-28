@@ -1,5 +1,5 @@
 
-import { _decorator, Component, Node, Vec3, systemEvent, SystemEvent, EventMouse, Animation, NodePool } from 'cc';
+import { _decorator, Component, Vec3, systemEvent, SystemEvent, EventMouse, Animation } from 'cc';
 const { ccclass, property } = _decorator;
 
 /**
@@ -41,8 +41,23 @@ export class PlayerController extends Component {
     }
 
     start() {
-        // [3]
-        // systemEvent.on(SystemEvent.EventType.MOUSE_UP, this.onMouseUp, this);
+    }
+
+    update(deltaTime: number) {
+        if (this._startJump) {
+            this._curJumpTime += deltaTime;
+            if (this._curJumpTime > this._jumpTime) {
+                this.node.setPosition(this._targetPos);
+                this._startJump = false;
+                this.onOnceJumpEnd();
+            } else {
+                this.node.getPosition(this._curPos);
+                this._deltaPos.x = this._curJumpSpeedX * deltaTime;
+                this._deltaPos.z = this._curJumpSpeedZ * deltaTime;
+                Vec3.add(this._curPos, this._curPos, this._deltaPos);
+                this.node.setPosition(this._curPos);
+            }
+        }
     }
 
     setInputActive(active: boolean) {
@@ -63,11 +78,9 @@ export class PlayerController extends Component {
             return;
         }
         this._startJump = true;
-        //this.node.getChildByName('Body').getPosition(this._curPos);
         this.node.getPosition(this._curPos);
         // Always keep the y axis pos as the same.
         this._targetPos.y = this._curPos.y;
-        console.log(this._curPos, this._targetPos);
         this._curJumpTime = 0;
         this._curJumpSpeedX = (this._targetPos.x - this._curPos.x) / this._jumpTime;
         this._curJumpSpeedZ = (this._targetPos.z - this._curPos.z) / this._jumpTime;
@@ -84,28 +97,9 @@ export class PlayerController extends Component {
 
     reset() {
         this._curMoveIndex = 0;
+        this.node.setPosition(0, 0, 0);
     }
 
-    update(deltaTime: number) {
-        if (this._startJump) {
-            this._curJumpTime += deltaTime;
-            if (this._curJumpTime > this._jumpTime) {
-                this.node.setPosition(this._targetPos);
-                this._startJump = false;
-                this.onOnceJumpEnd();
-            } else {
-                this.node.getPosition(this._curPos);
-                this._deltaPos.x = this._curJumpSpeedX * deltaTime;
-                this._deltaPos.z = this._curJumpSpeedZ * deltaTime;
-                Vec3.add(this._curPos, this._curPos, this._deltaPos);
-                this.node.setPosition(this._curPos);
-            }
-        }
-    }
-
-    // update (deltaTime: number) {
-    //     // [4]
-    // }
 }
 
 /**
