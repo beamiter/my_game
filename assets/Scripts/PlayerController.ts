@@ -1,6 +1,6 @@
+import {_decorator, Component, Vec3, systemEvent, SystemEvent, EventMouse, Animation, tween, easing, Quat} from 'cc';
 
-import { _decorator, Component, Vec3, systemEvent, SystemEvent, EventMouse, Animation } from 'cc';
-const { ccclass, property } = _decorator;
+const {ccclass, property} = _decorator;
 
 /**
  * Predefined variables
@@ -22,42 +22,34 @@ export class PlayerController extends Component {
     // [2]
     // @property
     // serializableDummy = 0;
-    @property({ type: Animation })
+    @property({type: Animation})
     public BodyAnim: Animation | null = null;
 
-    private _startJump: boolean = false;
-    private _curJumpTime: number = 0;
-    private _jumpTime: number = 0.5;
-    private _curJumpSpeedX: number = 0;
-    private _curJumpSpeedZ: number = 0;
+    private  _isMoving: boolean = false;
+    private _jumpTime: number = 0.4;
     private _curPos: Vec3 = new Vec3();
-    private _deltaPos: Vec3 = new Vec3(0, 0, 0);
     private _targetPos: Vec3 = new Vec3();
-    private _isMoving = false;
-    private _curMoveIndex = 0;
+    private _score = 0;
 
-    setTargetPose(pos: Vec3) {
-        this._targetPos = pos;
+    set isMoving(moving: boolean) {
+        this._isMoving = moving;
+    }
+
+    // Target Pose setter.
+    set targetPos(pos: Vec3) {
+        // Use clone(deep copy) to avoid shallow copy.
+        this._targetPos = pos.clone();
+        this._targetPos.y = 0;
+    }
+
+    get targetPos() {
+        return this._targetPos;
     }
 
     start() {
     }
 
     update(deltaTime: number) {
-        if (this._startJump) {
-            this._curJumpTime += deltaTime;
-            if (this._curJumpTime > this._jumpTime) {
-                this.node.setPosition(this._targetPos);
-                this._startJump = false;
-                this.onOnceJumpEnd();
-            } else {
-                this.node.getPosition(this._curPos);
-                this._deltaPos.x = this._curJumpSpeedX * deltaTime;
-                this._deltaPos.z = this._curJumpSpeedZ * deltaTime;
-                Vec3.add(this._curPos, this._curPos, this._deltaPos);
-                this.node.setPosition(this._curPos);
-            }
-        }
     }
 
     setInputActive(active: boolean) {
@@ -73,30 +65,43 @@ export class PlayerController extends Component {
     }
 
     jumpToNextStep() {
-        this.BodyAnim?.play('oneStep');
         if (this._isMoving) {
             return;
         }
-        this._startJump = true;
-        this.node.getPosition(this._curPos);
-        // Always keep the y axis pos as the same.
-        this._targetPos.y = this._curPos.y;
-        this._curJumpTime = 0;
-        this._curJumpSpeedX = (this._targetPos.x - this._curPos.x) / this._jumpTime;
-        this._curJumpSpeedZ = (this._targetPos.z - this._curPos.z) / this._jumpTime;
         this._isMoving = true;
+        this.node.getPosition(this._curPos);
+        console.log(this._curPos, this._targetPos);
+        let t = tween;
+        let movement = t().to(this._jumpTime, {position: this._targetPos}, {easing: t => easing.smooth(t)});
+        let player = t(this.node).then(movement).call(() => {
+            this.onOnceJumpEnd();
+        });
 
-        let step: number = Vec3.distance(this._targetPos, this._curPos);
-        this._curMoveIndex += step;
+        let tumbleZ = t().by(this._jumpTime, {eulerAngles: new Vec3(0, 0, -360)}, {easing: t => easing.smooth(t)});
+        let tumbleX = t().by(this._jumpTime, {eulerAngles: new Vec3(-360, 0, 0)}, {easing: t => easing.smooth(t)});
+        let axisX = Math.abs(this._targetPos.z - this._curPos.z) > Math.abs(this._targetPos.x - this._curPos.x);
+        let tumble = axisX ? tumbleX : tumbleZ;
+        let jump = t().by(this._jumpTime / 2, {position: new Vec3(0, 1, 0)}, {easing: t => easing.quadInOut(t)});
+        let fall = t().by(this._jumpTime / 2, {position: new Vec3(0, -1, 0)}, {easing: t => easing.quadIn(t)});
+        let body = t(this.node.getChildByName('Body'))
+            .parallel(
+                t().then(tumble),
+                t().then(jump).then(fall)
+            );
+
+        body.start();
+        player.start();
     }
 
     onOnceJumpEnd() {
-        this._isMoving = false;
-        this.node.emit('JumpEnd', this._curMoveIndex);
+        let step: number = Vec3.distance(this._targetPos, this._curPos);
+        this._score += step;
+        this.node.emit('JumpEnd', this._score);
     }
 
     reset() {
-        this._curMoveIndex = 0;
+        this._isMoving = false;
+        this._score = 0;
         this.node.setPosition(0, 0, 0);
     }
 
